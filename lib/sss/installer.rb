@@ -31,24 +31,60 @@ module Sss
       end
       
       class AptPackage
-        def initialize(name)
-          @name = name
+        def initialize(source)
+          @source = source
+          @deb_file = nil
+          @name = nil
         end
       
         def to_s
-          @name
+          @source
         end
       
         def installed?
-          %x(dpkg -l #{@name})
+          %x(dpkg -l #{name})
           $?.exitstatus == 0
         end
       
         def install
-          IO.popen("sudo apt-get install --yes #{@name}") do |io|
+          command = if @source =~ URI::regexp
+            "sudo dpkg -i #{deb_file}"
+          else
+            "sudo apt-get install --yes #{@name}"
+          end
+
+          IO.popen(command) do |io|
             while (line = io.gets) do
               puts(line)
             end
+          end
+        end
+
+        private
+
+        def name
+          @name ||= if @source =~ URI::regexp
+            IO.popen("dpkg --info #{deb_file}") do |io|
+              while (line = io.gets) do
+                if line.strip.start_with?("Package: ")
+                  return line.strip.partition(": ").last
+                end
+              end
+            end
+          else
+            @source
+          end
+        end
+
+        def deb_file
+          @deb_file ||= URI.open(@source) do |source_file|
+            deb_file = File.join("/tmp", @source.split("/").last)
+            
+            File.open(deb_file, "w") do |script_file|
+              script_file.write(source_file.read)
+            end
+
+            deb_file
           end
         end
       end
