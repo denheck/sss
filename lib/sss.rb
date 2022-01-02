@@ -7,7 +7,9 @@ require_relative "sss/installer"
 require_relative "sss/version"
 
 module Sss
-  SCRIPTS_DIR = File.join(Dir.home, ".ws", "scripts")
+  SCRIPTS_DIR = File.join(Dir.home, ".sss", "scripts")
+  PACKAGES_DIR = File.join(Dir.home, ".sss", "packages")
+  BIN_DIR = File.join(Dir.home, ".sss", "bins")
 
   class SetupParser
     attr_reader :installers
@@ -66,11 +68,12 @@ module Sss
     def setup(manifest)
       # initialize environment
       FileUtils.mkdir_p(Sss::SCRIPTS_DIR)
+      FileUtils.mkdir_p(Sss::PACKAGES_DIR)
+      FileUtils.mkdir_p(Sss::BIN_DIR)
 
       # parse setup file
-      contents = File.read(manifest)
       parser = Sss::SetupParser.new
-      parser.instance_eval(contents)
+      parser.instance_eval(contents(manifest))
 
       # run installers
       parser.installers.each do |installer|
@@ -81,6 +84,16 @@ module Sss
           installer.install  
         end
       end
+    end
+
+    no_commands do
+      def contents(manifest)
+        if manifest =~ URI::regexp
+          URI.open(manifest){ |file| file.read }
+        else
+          File.read(manifest)
+        end
+      end  
     end
   end
 

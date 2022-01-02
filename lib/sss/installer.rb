@@ -33,7 +33,6 @@ module Sss
       class AptPackage
         def initialize(source)
           @source = source
-          @deb_file = nil
           @name = nil
         end
       
@@ -77,15 +76,17 @@ module Sss
         end
 
         def deb_file
-          @deb_file ||= URI.open(@source) do |source_file|
-            deb_file = File.join("/tmp", @source.split("/").last)
-            
-            File.open(deb_file, "w") do |script_file|
-              script_file.write(source_file.read)
-            end
+          filename = File.join(PACKAGES_DIR, Digest::SHA1.hexdigest(@source))
 
-            deb_file
+          unless File.exists?(filename)
+            URI.open(@source) do |source_file|              
+              File.open(filename, "w") do |destination_file|
+                destination_file.write(source_file.read)
+              end
+            end
           end
+
+          filename
         end
       end
       
@@ -282,7 +283,7 @@ module Sss
           @source_filename = source.split("/").last
           @source_file_basename = @source_filename.partition(".").first
           @command = command || @source_file_basename
-          @temp_destination = File.join("/tmp/", @source_filename)
+          @temp_destination = File.join(BIN_DIR, @source_filename)
           @destination = File.join("/usr/local/bin/", @command)
         end
 
