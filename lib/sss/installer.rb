@@ -315,6 +315,12 @@ module Sss
             end
 
             %x(sudo cp #{command_file} #{@destination})
+          elsif @source_filename.end_with?(".gz")
+            unarchived_temp_destination = @temp_destination[0, @temp_destination.length - ".gz".length]
+
+            %x(zcat #{@temp_destination} > #{unarchived_temp_destination})
+            %x(chmod +x #{unarchived_temp_destination})
+            %x(sudo cp #{unarchived_temp_destination} #{@destination})
           else
             %x(sudo cp #{@temp_destination} #{@destination})
           end
